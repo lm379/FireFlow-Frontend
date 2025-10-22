@@ -1,11 +1,60 @@
 import axios from 'axios';
 
-const apiClient = axios.create({
+export const apiClient = axios.create({
   baseURL: '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// 添加请求拦截器，自动添加JWT令牌
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+);
+
+// 添加响应拦截器，处理认证错误
+apiClient.interceptors.response.use(
+  (response) => {
+    return response
+  },
+  (error) => {
+    if (error.response?.status === 401) {
+      const requestUrl = error.config?.url || ''
+      const isLoginRequest = requestUrl.includes('/auth/login')
+      
+      // 如果是登录请求的401错误，不处理
+      if (isLoginRequest) {
+        return Promise.reject(error)
+      }
+      
+      // 对于其他受保护资源的401错误，才是真正的令牌过期
+      // 清除认证信息
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user_info')
+      
+      // 显示提示信息
+      import('element-plus').then(({ ElMessage }) => {
+        ElMessage.warning('登录已过期，请重新登录')
+      })
+      
+      // 如果不是在登录页，跳转到登录页
+      if (!window.location.hash.includes('/login')) {
+        // 使用完整URL进行跳转，确保正确的hash路由格式
+        window.location.href = window.location.origin + '/#/login'
+      }
+    }
+    return Promise.reject(error)
+  }
+);
 
 // Generic API response type
 export interface ApiResponse<T> {

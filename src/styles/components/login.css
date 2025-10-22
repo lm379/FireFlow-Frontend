@@ -1,0 +1,419 @@
+/* LoginForm 组件样式 */
+.login-container {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+/* 左侧插画区域 */
+.login-illustration {
+  flex: 1;
+  background: rgb(41, 49, 70);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-header {
+  padding: 40px;
+  z-index: 2;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  color: white;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  margin-right: 12px;
+  color: white;
+}
+
+.brand-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+}
+
+.illustration-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 60px;
+  z-index: 2;
+}
+
+.welcome-text {
+  margin-bottom: 60px;
+}
+
+.welcome-text h2 {
+  font-size: 36px;
+  font-weight: bold;
+  color: white;
+  margin: 0 0 16px 0;
+  line-height: 1.2;
+}
+
+.welcome-text p {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+}
+
+/* 插画图形元素 */
+.illustration-graphics {
+  position: relative;
+  height: 300px;
+}
+
+.graphic-element {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dashboard {
+  width: 200px;
+  height: 140px;
+  top: 20px;
+  left: 20px;
+  padding: 16px;
+}
+
+.dashboard-header {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.dashboard-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 80px;
+}
+
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  flex: 1;
+  margin-right: 16px;
+}
+
+.bar {
+  width: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 2px;
+  animation: barGrow 2s ease-in-out infinite alternate;
+}
+
+.chart-pie {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: conic-gradient(
+    rgba(255, 255, 255, 0.8) 0deg 120deg,
+    rgba(255, 255, 255, 0.4) 120deg 200deg,
+    rgba(255, 255, 255, 0.6) 200deg 360deg
+  );
+}
+
+.security {
+  width: 80px;
+  height: 80px;
+  top: 50px;
+  right: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shield-icon {
+  width: 40px;
+  height: 40px;
+  color: rgba(255, 255, 255, 0.8);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.floating-elements {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.float-element {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  animation: float 3s ease-in-out infinite;
+}
+
+/* 右侧登录表单区域 */
+.login-form-section {
+  width: 500px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.brand-text {
+  display: none;
+}
+
+.login-header {
+  margin-bottom: 40px;
+}
+
+.login-header h1 {
+  font-size: 32px;
+  font-weight: bold;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.login-form {
+  margin-bottom: 32px;
+}
+
+.form-item {
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.form-submit {
+  margin-bottom: 0;
+}
+
+.login-button {
+  width: 100%;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 500;
+  background: #4285f4;
+  border: none;
+  border-radius: 8px;
+}
+
+.login-button:hover {
+  background: #3367d6;
+}
+
+.login-footer {
+  text-align: center;
+}
+
+.register-button {
+  color: #4285f4;
+  font-size: 14px;
+  padding: 0;
+}
+
+.register-button:hover {
+  color: #3367d6;
+}
+
+.forgot-password {
+  color: #4285f4;
+  font-size: 14px;
+  padding: 0;
+}
+
+.forgot-password:hover {
+  color: #3367d6;
+}
+
+/* 动画效果 */
+@keyframes barGrow {
+  0% { transform: scaleY(0.6); }
+  100% { transform: scaleY(1); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-10px) rotate(120deg); }
+  66% { transform: translateY(5px) rotate(240deg); }
+}
+
+/* Element Plus 样式覆盖 */
+.form-item :deep(.el-form-item__content) {
+  width: 100%;
+}
+
+:deep(.el-input__wrapper) {
+  border-radius: 8px;
+  border: 1px solid #d9d9d9;
+  box-shadow: none;
+  padding: 0 16px;
+  height: 48px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:deep(.el-input__wrapper:hover) {
+  border-color: #4285f4;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+}
+
+/* 确保密码输入框宽度一致 */
+:deep(.el-input--large .el-input__wrapper) {
+  min-width: 100%;
+  width: 100%;
+}
+
+/* 密码显示图标样式 */
+:deep(.el-input__suffix) {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+:deep(.el-input__suffix-inner) {
+  display: flex;
+  align-items: center;
+}
+
+/* 确保所有输入框都有相同的padding来为图标留出空间 */
+:deep(.el-input.el-input--large .el-input__wrapper) {
+  padding-right: 44px !important;
+}
+
+:deep(.el-input__inner) {
+  font-size: 14px;
+}
+
+:deep(.el-checkbox__label) {
+  font-size: 14px;
+  color: #666;
+}
+
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-color: #4285f4;
+  border-color: #4285f4;
+}
+
+:deep(.el-form-item__error) {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+:deep(.el-button--text) {
+  color: #4285f4;
+}
+
+:deep(.el-button--text:hover) {
+  color: #3367d6;
+  background: transparent;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .login-container {
+    background: rgb(41, 49, 70);
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+  
+  .login-illustration {
+    display: none;
+  }
+  
+  .login-form-section {
+    width: auto;
+    max-width: 400px;
+    min-height: auto;
+    background: transparent;
+    padding: 0;
+  }
+  
+  .login-card {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    position: relative;
+  }
+  
+  
+  .brand-text {
+    display: flex;
+    align-items: center;
+    position: absolute;
+    top: -60px;
+    left: 20px;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+  }
+  
+  .brand-text img {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .login-container {
+    padding: 16px;
+  }
+  
+  .login-card {
+    padding: 32px 24px;
+    max-width: none;
+    width: 100%;
+  }
+  
+  .login-header h1 {
+    font-size: 28px;
+  }
+}
