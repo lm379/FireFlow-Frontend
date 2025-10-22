@@ -233,6 +233,33 @@ export function useLogin() {
     }
   }
 
+  // 处理忘记密码
+  const handleForgotPassword = () => {
+    ElMessage({
+      message: `
+        <div style="line-height: 1.6;">
+          <strong>忘记密码解决方法：</strong><br/>
+          <div style="margin-top: 8px;">
+            <div style="margin-bottom: 4px;">1. 如果使用docker运行：</div>
+            <div style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #666;">
+              docker exec -it fireflow ./fireflow reset
+            </div>
+          </div>
+          <div style="margin-top: 8px;">
+            <div style="margin-bottom: 4px;">2. 如果是二进制直接运行：</div>
+            <div style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #666;">
+              ./fireflow reset
+            </div>
+          </div>
+        </div>
+      `,
+      type: 'info',
+      duration: 10000,
+      dangerouslyUseHTMLString: true,
+      customClass: 'forgot-password-message'
+    })
+  }
+
   return {
     // 响应式数据
     loginFormRef,
@@ -250,5 +277,6 @@ export function useLogin() {
     handleLogin,
     handleChangePassword,
     initLoginForm,
+    handleForgotPassword,
   }
 }

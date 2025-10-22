@@ -93,7 +93,7 @@
 
           <div class="form-options">
             <el-checkbox v-model="rememberMe">记住我</el-checkbox>
-            <el-button type="text" class="forgot-password">忘记密码</el-button>
+            <el-button type="text" class="forgot-password" @click="handleForgotPassword">忘记密码</el-button>
           </div>
 
           <el-form-item class="form-submit">
@@ -188,6 +188,7 @@ const {
   handleLogin,
   handleChangePassword,
   initLoginForm,
+  handleForgotPassword,
 } = useLogin()
 
 // 组件挂载时恢复保存的登录信息
