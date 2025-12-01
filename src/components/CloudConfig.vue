@@ -53,16 +53,33 @@
               <el-input v-model="form.project_id" placeholder="华为云项目ID"></el-input>
             </el-form-item>
           </el-col>
+          <el-col :span="12" v-if="showAzureFields">
+            <el-form-item label="Resource Group *">
+              <el-input v-model="form.project_id" placeholder="Azure资源组名称"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20" v-if="showAzureFields">
+          <el-col :span="12">
+            <el-form-item label="Tenant ID *">
+              <el-input v-model="form.tenant_id" placeholder="Azure租户ID"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="Subscription ID *">
+              <el-input v-model="form.subscription_id" placeholder="Azure订阅ID"></el-input>
+            </el-form-item>
+          </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="AK *">
-              <el-input v-model="form.secret_id" placeholder="访问密钥ID"></el-input>
+              <el-input v-model="form.secret_id" placeholder="访问密钥ID/Client ID"></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="SK *">
-              <el-input v-model="form.secret_key" type="password" placeholder="访问密钥Secret"></el-input>
+              <el-input v-model="form.secret_key" type="password" placeholder="访问密钥Secret/Client Secret"></el-input>
             </el-form-item>
           </el-col>
         </el-row>
@@ -115,9 +132,19 @@
             {{ scope.row.secret_id ? scope.row.secret_id.substr(0, 8) + '***' : '' }}
           </template>
         </el-table-column>
-        <el-table-column prop="project_id" label="Project ID" width="120">
+        <el-table-column label="Project ID/Resource Group" width="180">
           <template #default="scope">
             {{ scope.row.project_id || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Tenant ID" width="120">
+          <template #default="scope">
+            {{ scope.row.tenant_id ? scope.row.tenant_id.substr(0, 8) + '***' : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Subscription ID" width="140">
+          <template #default="scope">
+            {{ scope.row.subscription_id ? scope.row.subscription_id.substr(0, 8) + '***' : '-' }}
           </template>
         </el-table-column>
         <el-table-column label="状态" width="80">
@@ -159,6 +186,7 @@ const {
   form,
   isEdit,
   showProjectId,
+  showAzureFields,
   onProviderChange,
   onSubmit,
   onCancel,

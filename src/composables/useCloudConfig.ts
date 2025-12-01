@@ -43,6 +43,8 @@ export interface CloudConfigForm {
   is_default: boolean
   is_enabled: boolean
   project_id?: string
+  tenant_id?: string
+  subscription_id?: string
   type?: string
 }
 
@@ -73,12 +75,19 @@ export function useCloudConfig() {
     is_default: false,
     is_enabled: true,
     project_id: '',
+    tenant_id: '',
+    subscription_id: '',
     type: '',
   })
 
   // 是否显示ProjectID字段（仅华为云需要）
   const showProjectId = computed(() => {
     return form.value.provider === 'HuaweiCloud'
+  })
+
+  // 是否显示Azure字段（仅Azure需要）
+  const showAzureFields = computed(() => {
+    return form.value.provider === 'Azure'
   })
 
   // 获取云服务配置列表
@@ -151,6 +160,8 @@ export function useCloudConfig() {
       is_default: false,
       is_enabled: true,
       project_id: '',
+      tenant_id: '',
+      subscription_id: '',
       type: '',
     }
     isEdit.value = false
@@ -191,6 +202,22 @@ export function useCloudConfig() {
       return false
     }
 
+    // Azure必须填写TenantID和SubscriptionID
+    if (form.value.provider === 'Azure') {
+      if (!form.value.tenant_id) {
+        ElMessage.error('Azure必须填写Tenant ID')
+        return false
+      }
+      if (!form.value.subscription_id) {
+        ElMessage.error('Azure必须填写Subscription ID')
+        return false
+      }
+      if (!form.value.project_id) {
+        ElMessage.error('Azure必须填写Resource Group Name')
+        return false
+      }
+    }
+
     return true
   }
 
@@ -216,6 +243,19 @@ export function useCloudConfig() {
     // 华为云添加project_id
     if (form.value.provider === 'HuaweiCloud' && form.value.project_id) {
       configData.project_id = form.value.project_id
+    }
+
+    // Azure添加tenant_id、subscription_id和project_id（资源组名称）
+    if (form.value.provider === 'Azure') {
+      if (form.value.tenant_id) {
+        configData.tenant_id = form.value.tenant_id
+      }
+      if (form.value.subscription_id) {
+        configData.subscription_id = form.value.subscription_id
+      }
+      if (form.value.project_id) {
+        configData.project_id = form.value.project_id
+      }
     }
 
     try {
@@ -255,6 +295,8 @@ export function useCloudConfig() {
       is_default: row.is_default,
       is_enabled: row.is_enabled,
       project_id: row.project_id || '',
+      tenant_id: row.tenant_id || '',
+      subscription_id: row.subscription_id || '',
       type: row.type || '',
     }
     fetchRegions(row.provider)
@@ -312,6 +354,7 @@ export function useCloudConfig() {
 
     // 计算属性
     showProjectId,
+    showAzureFields,
 
     // 方法
     fetchCloudConfigs,

@@ -88,6 +88,8 @@ export interface CloudConfig {
   is_default: boolean;
   is_enabled: boolean;
   project_id?: string;
+  tenant_id?: string;
+  subscription_id?: string;
   type?: string;
   CreatedAt: string;
 }

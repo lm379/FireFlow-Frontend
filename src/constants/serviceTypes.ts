@@ -49,6 +49,14 @@ export const SERVICE_TYPE_MAP: { [provider: string]: ServiceType[] } = {
       Description: "华为云弹性云服务器，提供多种规格的云服务器",
     },
   ],
+  "Azure": [
+    {
+      Value: 0,
+      Name: "VM",
+      DisplayName: "虚拟机 VM",
+      Description: "微软Azure虚拟机，提供灵活的云计算能力",
+    },
+  ],
 }
 
 /**
