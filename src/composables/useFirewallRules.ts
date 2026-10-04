@@ -1,6 +1,6 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getRules, addRule, updateRule, deleteRule, executeRule, getCloudConfigs } from '../api'
+import { getRules, addRule, updateRule, setRuleStatus, deleteRule, executeRule, getCloudConfigs } from '../api'
 import type { FirewallRule, CloudConfig, ExecuteRuleResponse } from '../api'
 import { getProviderDisplayName } from '../constants/providers'
 import { getServiceTypeDisplayName } from '../constants/serviceTypes'
@@ -21,10 +21,12 @@ export interface CloudConfigOption {
 }
 
 // 使用防火墙规则的组合式函数
-export function useFirewallRules() {
+export function useFirewallRules(options: { onSaved?: () => void | Promise<void> } = {}) {
   const rules = ref<FirewallRule[]>([])
   const cloudConfigs = ref<CloudConfig[]>([])
   const cloudConfigOptions = ref<CloudConfigOption[]>([])
+  const togglingIds = ref(new Set<number>())
+  const submitting = ref(false)
   const isEdit = ref(false)
   const editId = ref<number | null>(null)
 
@@ -93,7 +95,7 @@ export function useFirewallRules() {
   const fetchRules = async () => {
     try {
       const response = await getRules()
-      rules.value = response.data
+      rules.value = response.data.data
     } catch (error) {
       ElMessage.error('获取规则列表失败')
     }
@@ -103,8 +105,8 @@ export function useFirewallRules() {
   const fetchCloudConfigs = async () => {
     try {
       const response = await getCloudConfigs()
-      cloudConfigs.value = response.data
-      cloudConfigOptions.value = response.data
+      cloudConfigs.value = response.data.data
+      cloudConfigOptions.value = response.data.data
         .filter(config => config.is_enabled)
         .map(config => {
           const providerName = getProviderDisplayName(config.provider)
@@ -157,7 +159,7 @@ export function useFirewallRules() {
 
   // 提交表单
   const onSubmit = async () => {
-    if (!validateForm()) return
+    if (submitting.value || !validateForm()) return false
 
     const ruleData = {
       remark: form.value.remark,
@@ -167,6 +169,7 @@ export function useFirewallRules() {
       enabled: form.value.enabled,
     }
 
+    submitting.value = true
     try {
       if (isEdit.value && editId.value !== null) {
         // 更新规则
@@ -210,9 +213,13 @@ export function useFirewallRules() {
         }
       }
       resetForm()
-      fetchRules()
+      await (options.onSaved ? options.onSaved() : fetchRules())
+      return true
     } catch (error) {
       ElMessage.error(isEdit.value ? '更新规则失败' : '添加规则失败')
+      return false
+    } finally {
+      submitting.value = false
     }
   }
 
@@ -235,9 +242,33 @@ export function useFirewallRules() {
   }
 
   // 删除规则
+  const handleToggle = async (row: FirewallRule) => {
+    if (togglingIds.value.has(row.ID)) return
+    const enabled = !row.enabled
+    togglingIds.value.add(row.ID)
+    try {
+      await ElMessageBox.confirm(`确定要${enabled ? '启用' : '禁用'}规则“${row.remark}”吗？`, '提示', {
+        confirmButtonText: '确认',
+        showClose: false,
+        cancelButtonText: '取消',
+        type: enabled ? 'info' : 'warning',
+      })
+      await setRuleStatus(row.ID, enabled ? 'enable' : 'disable')
+      row.enabled = enabled
+      ElMessage.success(enabled ? '规则已启用' : '规则已禁用')
+      await fetchRules()
+    } catch (error: any) {
+      if (error === 'cancel' || error === 'close') return
+      ElMessage.error(error.response?.data?.msg || '切换规则状态失败')
+    } finally {
+      togglingIds.value.delete(row.ID)
+    }
+  }
+
   const handleDelete = (row: FirewallRule) => {
     ElMessageBox.confirm('确定要删除这条规则吗？', '提示', {
-      confirmButtonText: '确定',
+      confirmButtonText: '确认',
+      showClose: false,
       cancelButtonText: '取消',
       type: 'warning',
     }).then(async () => {
@@ -252,34 +283,50 @@ export function useFirewallRules() {
   }
 
   // 执行规则
+  const canExecuteRule = (row: FirewallRule): boolean => {
+    const currentRule = rules.value.find(rule => rule.ID === row.ID) ?? row
+    if (!currentRule.enabled) {
+      ElMessage.warning('规则已禁用，请先启用后再执行更新')
+      return false
+    }
+    return !togglingIds.value.has(row.ID)
+  }
+
   const handleExecute = (row: FirewallRule) => {
+    if (!canExecuteRule(row)) return
     ElMessageBox.confirm('确定要立即执行这条规则吗？', '提示', {
-      confirmButtonText: '确定',
+      confirmButtonText: '确认',
+      showClose: false,
       cancelButtonText: '取消',
       type: 'info',
     }).then(async () => {
+      if (!canExecuteRule(row)) return
       try {
         const response = await executeRule(row.ID)
-        const result: ExecuteRuleResponse = response.data
+        const result: ExecuteRuleResponse = response.data.data
         
         // 根据执行结果显示不同的消息
         switch (result.status) {
           case 'unchanged':
-            ElMessage.success(`${result.message} (云端IP: ${result.cloud_ip}, 当前IP: ${result.current_ip})`)
+            ElMessage.success(`${response.data.msg} (云端IP: ${result.cloud_ip}, 当前IP: ${result.current_ip})`)
             break
           case 'updated':
-            ElMessage.success(`${result.message} (IP已从 ${result.cloud_ip} 更新为 ${result.current_ip})`)
+            ElMessage.success(response.data.msg)
             break
           case 'error':
-            ElMessage.error(`${result.message} (云端IP: ${result.cloud_ip}, 当前IP: ${result.current_ip})`)
+            ElMessage.error(`${response.data.msg} (云端IP: ${result.cloud_ip}, 当前IP: ${result.current_ip})`)
             break
           default:
-            ElMessage.success(result.message)
+            ElMessage.success(response.data.msg)
         }
         
         // 刷新规则列表
         fetchRules()
       } catch (error) {
+        ElMessage.error('执行规则失败')
+      }
+    }).catch((error) => {
+      if (error !== 'cancel' && error !== 'close') {
         ElMessage.error('执行规则失败')
       }
     })
@@ -326,6 +373,8 @@ export function useFirewallRules() {
     cloudConfigOptions,
     form,
     isEdit,
+    submitting,
+    togglingIds,
     editId,
     
     // 计算属性
@@ -341,6 +390,7 @@ export function useFirewallRules() {
     onCancel,
     resetForm,
     handleEdit,
+    handleToggle,
     handleDelete,
     handleExecute,
     initData,

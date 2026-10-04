@@ -1,16 +1,18 @@
 import { ref, computed } from 'vue'
+import { isAxiosError } from 'axios'
 import dayjs from 'dayjs'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getCloudConfigs,
   addCloudConfig,
   updateCloudConfig,
+  setCloudConfigStatus,
   deleteCloudConfig,
   testCloudConfig,
   getProviders,
   getRegions
 } from '../api'
-import type { CloudConfig } from '../api'
+import type { CloudConfig, CloudConfigRequest } from '../api'
 import { getProviderDisplayName } from '../constants/providers'
 import {
   getServiceTypeDisplayName as getServiceTypeDisplayNameFromMap,
@@ -45,7 +47,7 @@ export interface CloudConfigForm {
   project_id?: string
   tenant_id?: string
   subscription_id?: string
-  type?: string
+  type?: number | ''
 }
 
 // 区域接口
@@ -55,13 +57,16 @@ export interface Region {
 }
 
 // 使用云配置的组合式函数
-export function useCloudConfig() {
+export function useCloudConfig(options: { onSaved?: () => void | Promise<void> } = {}) {
   const configs = ref<CloudConfig[]>([])
   const providers = ref<string[]>([])
   const regions = ref<Region[]>([])
   const serviceTypes = ref<ServiceType[]>([])
+  let regionRequestId = 0
   const loadingRegions = ref(false)
   const loadingServiceTypes = ref(false)
+  const togglingIds = ref(new Set<number>())
+  const submitting = ref(false)
   const isEdit = ref(false)
   const editId = ref<number | null>(null)
 
@@ -94,7 +99,7 @@ export function useCloudConfig() {
   const fetchCloudConfigs = async () => {
     try {
       const response = await getCloudConfigs()
-      configs.value = response.data
+      configs.value = response.data.data
     } catch (error) {
       ElMessage.error('获取云服务配置失败')
     }
@@ -112,14 +117,15 @@ export function useCloudConfig() {
 
   // 获取区域列表
   const fetchRegions = async (provider: string) => {
+    const requestId = ++regionRequestId
     loadingRegions.value = true
     try {
       const response = await getRegions(provider)
-      regions.value = response.data.data
+      if (requestId === regionRequestId) regions.value = response.data.data.items
     } catch (error) {
-      ElMessage.error('获取区域列表失败')
+      if (requestId === regionRequestId) ElMessage.error('获取区域列表失败')
     } finally {
-      loadingRegions.value = false
+      if (requestId === regionRequestId) loadingRegions.value = false
     }
   }
 
@@ -140,6 +146,8 @@ export function useCloudConfig() {
   const onProviderChange = (provider: string) => {
     form.value.region = ''
     form.value.type = ''
+    regionRequestId++
+    loadingRegions.value = false
     regions.value = []
     serviceTypes.value = []
     if (provider) {
@@ -150,6 +158,10 @@ export function useCloudConfig() {
 
   // 重置表单
   const resetForm = () => {
+    regionRequestId++
+    loadingRegions.value = false
+    regions.value = []
+    serviceTypes.value = []
     form.value = {
       provider: '',
       region: '',
@@ -186,12 +198,13 @@ export function useCloudConfig() {
       return false
     }
 
-    if (!form.value.secret_id) {
+    const providerChanged = isEdit.value && configs.value.find(c => c.ID === editId.value)?.provider !== form.value.provider
+    if (!form.value.secret_id && (!isEdit.value || providerChanged)) {
       ElMessage.error('请输入Access Key ID')
       return false
     }
 
-    if (!form.value.secret_key && !isEdit.value) {
+    if (!form.value.secret_key && (!isEdit.value || providerChanged)) {
       ElMessage.error('请输入Access Key Secret')
       return false
     }
@@ -224,11 +237,11 @@ export function useCloudConfig() {
   // 提交表单
   const onSubmit = async () => {
     // 表单验证
-    if (!validateForm()) {
-      return
+    if (submitting.value || !validateForm()) {
+      return false
     }
 
-    const configData: any = {
+    const configData: CloudConfigRequest = {
       provider: form.value.provider,
       region: form.value.region,
       instance_id: form.value.instance_id,
@@ -237,7 +250,7 @@ export function useCloudConfig() {
       description: form.value.description,
       is_default: form.value.is_default,
       is_enabled: form.value.is_enabled,
-      type: form.value.type, // 添加服务类型字段
+      type: form.value.type === '' ? undefined : form.value.type,
     }
 
     // 华为云添加project_id
@@ -258,8 +271,12 @@ export function useCloudConfig() {
       }
     }
 
+    submitting.value = true
     try {
       if (isEdit.value && editId.value !== null) {
+        if (!configData.secret_id) {
+          delete configData.secret_id
+        }
         if (!configData.secret_key) {
           delete (configData as Partial<typeof configData>).secret_key
         }
@@ -270,9 +287,13 @@ export function useCloudConfig() {
         ElMessage.success('配置添加成功')
       }
       resetForm()
-      fetchCloudConfigs()
+      await (options.onSaved ? options.onSaved() : fetchCloudConfigs())
+      return true
     } catch (error) {
       ElMessage.error(isEdit.value ? '更新配置失败' : '添加配置失败')
+      return false
+    } finally {
+      submitting.value = false
     }
   }
 
@@ -289,7 +310,7 @@ export function useCloudConfig() {
       provider: row.provider,
       region: row.region,
       instance_id: row.instance_id,
-      secret_id: row.secret_id,
+      secret_id: '',
       secret_key: '', // 不显示密钥
       description: row.description,
       is_default: row.is_default,
@@ -297,40 +318,65 @@ export function useCloudConfig() {
       project_id: row.project_id || '',
       tenant_id: row.tenant_id || '',
       subscription_id: row.subscription_id || '',
-      type: row.type || '',
+      type: row.type ?? '',
     }
     fetchRegions(row.provider)
     fetchServiceTypes(row.provider)
   }
 
   // 删除配置
-  const handleDelete = (row: CloudConfig) => {
-    ElMessageBox.confirm('确定要删除这个云服务配置吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    }).then(async () => {
-      try {
-        await deleteCloudConfig(row.ID)
-        ElMessage.success('配置删除成功')
-        fetchCloudConfigs()
-      } catch (error) {
-        ElMessage.error('删除配置失败')
-      }
-    })
+  const handleToggle = async (row: CloudConfig) => {
+    if (togglingIds.value.has(row.ID)) return
+    const enabled = !row.is_enabled
+    togglingIds.value.add(row.ID)
+    try {
+      await ElMessageBox.confirm(`确定要${enabled ? '启用' : '禁用'}服务器实例“${row.description || row.instance_id}”吗？`, '提示', {
+        confirmButtonText: '确认',
+        showClose: false,
+        cancelButtonText: '取消',
+        type: enabled ? 'info' : 'warning',
+      })
+      await setCloudConfigStatus(row.ID, enabled ? 'enable' : 'disable')
+      row.is_enabled = enabled
+      ElMessage.success(enabled ? '实例已启用' : '实例已禁用')
+      await fetchCloudConfigs()
+    } catch (error: any) {
+      if (error === 'cancel' || error === 'close') return
+      ElMessage.error(error.response?.data?.msg || '切换实例状态失败')
+    } finally {
+      togglingIds.value.delete(row.ID)
+    }
+  }
+
+  const handleDelete = async (row: CloudConfig) => {
+    try {
+      await ElMessageBox.confirm('确定要删除这个云服务配置吗？', '提示', {
+        confirmButtonText: '确认',
+        showClose: false,
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+      await deleteCloudConfig(row.ID)
+      ElMessage.success('配置删除成功')
+      await fetchCloudConfigs()
+    } catch (error) {
+      if (error === 'cancel' || error === 'close') return
+      const message = isAxiosError(error) ? error.response?.data?.msg : undefined
+      ElMessage.error(message || '删除配置失败')
+    }
   }
 
   // 测试配置
   const handleTest = async (row: CloudConfig) => {
     try {
       const response = await testCloudConfig(row.ID)
-      if (response.data.success) {
-        ElMessage.success(response.data.message)
+      if (response.data.code === 200) {
+        ElMessage.success(response.data.msg)
       } else {
-        ElMessage.error(response.data.message)
+        ElMessage.error(response.data.msg)
       }
-    } catch (error) {
-      ElMessage.error('测试连接失败')
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.msg || '测试连接失败')
     }
   }
 
@@ -350,6 +396,8 @@ export function useCloudConfig() {
     loadingServiceTypes,
     form,
     isEdit,
+    submitting,
+    togglingIds,
     editId,
 
     // 计算属性
@@ -366,6 +414,7 @@ export function useCloudConfig() {
     onCancel,
     resetForm,
     handleEdit,
+    handleToggle,
     handleDelete,
     handleTest,
     initData,

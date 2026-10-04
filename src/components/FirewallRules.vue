@@ -3,67 +3,19 @@
     <el-card class="box-card">
       <template #header>
         <div class="card-header">
-          <span>{{ isEdit ? '编辑规则' : '添加新规则' }}</span>
+          <span>添加新规则</span>
         </div>
       </template>
-      <el-form :model="form" label-width="120px">
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="规则备注 *">
-              <el-input v-model="form.remark" placeholder="例如：办公网络SSH访问"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="云服务配置 *">
-              <el-select v-model="form.cloud_config_id" placeholder="请选择已配置的云服务" style="width: 100%;">
-                <el-option v-for="item in cloudConfigOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="端口号 *">
-              <el-input v-model="form.port" :disabled="isPortDisabled" placeholder="例如：22, 80, 443, 8000-8080, ALL"></el-input>
-              <div v-if="form.port.includes(',') && selectedCloudConfig" style="color: #909399; font-size: 12px; line-height: 1.5;">
-                <span v-if="selectedCloudConfig.provider === 'HuaweiCloud'" style="color: #67C23A;">
-                  华为云ECS/Flexus均支持多端口，将创建 1 条包含所有端口的规则
-                </span>
-                <span v-else-if="selectedCloudConfig.provider === 'Aliyun' && Number(selectedCloudConfig.type) === 1" style="color: #67C23A;">
-                  阿里云轻量应用服务器支持多端口，将创建 1 条包含所有端口的规则
-                </span>
-                <span v-else style="color: #E6A23C;">
-                  {{ getSelectedConfigDisplayName() }}不支持多端口，将自动创建 {{ portCount }} 条独立规则
-                </span>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="协议类型 *">
-              <el-select v-model="form.protocol" style="width: 100%;">
-                <el-option label="TCP" value="TCP"></el-option>
-                <el-option label="UDP" value="UDP"></el-option>
-                <el-option label="ICMP" value="ICMP"></el-option>
-                <el-option label="ALL" value="ALL"></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="启用状态">
-              <el-select v-model="form.enabled" style="width: 100%;">
-                <el-option label="启用" :value="true"></el-option>
-                <el-option label="禁用" :value="false"></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item>
-          <el-button type="primary" @click="onSubmit">{{ isEdit ? '更新规则' : '添加规则' }}</el-button>
-          <el-button @click="onCancel">取消</el-button>
-        </el-form-item>
-      </el-form>
+      <FirewallRuleFields v-model="form"
+        :cloud-config-options="cloudConfigOptions"
+        :selected-cloud-config="selectedCloudConfig"
+        :is-port-disabled="isPortDisabled"
+        :port-count="portCount"
+        :selected-config-display-name="getSelectedConfigDisplayName()" />
+      <div class="form-actions">
+        <el-button type="primary" :loading="submitting" @click="onSubmit">添加规则</el-button>
+        <el-button :disabled="submitting" @click="onCancel">重置</el-button>
+      </div>
     </el-card>
 
     <el-card class="box-card" style="margin-top: 20px;">
@@ -89,41 +41,95 @@
           </template>
         </el-table-column>
         <el-table-column prop="UpdatedAt" label="最后更新" width="180" :formatter="formatDate" />
-        <el-table-column label="操作" fixed="right" width="200">
+        <el-table-column label="操作" fixed="right" width="280">
           <template #default="scope">
-            <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
-            <el-button size="small" type="success" @click="handleExecute(scope.row)">执行</el-button>
+            <el-button size="small" :type="scope.row.enabled ? 'warning' : 'success'"
+              :loading="togglingIds.has(scope.row.ID)" @click="handleToggle(scope.row)">
+              {{ scope.row.enabled ? '禁用' : '启用' }}
+            </el-button>
+            <el-button size="small" :disabled="togglingIds.has(scope.row.ID)" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button size="small" type="danger" :disabled="togglingIds.has(scope.row.ID)" @click="handleDelete(scope.row)">删除</el-button>
+            <el-tooltip content="规则已禁用，请先启用后再执行更新" :disabled="scope.row.enabled">
+              <span class="execute-action">
+                <el-button size="small" type="success" :disabled="!scope.row.enabled || togglingIds.has(scope.row.ID)" @click="handleExecute(scope.row)">执行</el-button>
+              </span>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-dialog v-model="editDialogVisible" title="编辑防火墙规则" width="min(900px, 94vw)"
+      :close-on-click-modal="false" :close-on-press-escape="!editSubmitting" :show-close="false"
+      destroy-on-close @closed="resetEdit">
+      <FirewallRuleFields v-model="editForm" is-edit
+        :cloud-config-options="cloudConfigOptions"
+        :selected-cloud-config="editSelectedCloudConfig"
+        :is-port-disabled="editIsPortDisabled"
+        :port-count="editPortCount"
+        :selected-config-display-name="editor.getSelectedConfigDisplayName()" />
+      <template #footer>
+        <el-button :disabled="editSubmitting" @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editSubmitting" @click="saveEdit">确认</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
+import type { FirewallRule } from '../api'
+import FirewallRuleFields from './FirewallRuleFields.vue'
 import { useFirewallRules } from '../composables/useFirewallRules'
 import { formatDateTime } from '../utils/common'
 import '../styles/components/firewall-rules.css'
 
 const {
   rules,
+  cloudConfigs,
+  fetchRules,
   cloudConfigOptions,
   form,
-  isEdit,
+  submitting,
+  togglingIds,
   isPortDisabled,
   portCount,
   selectedCloudConfig,
   onSubmit,
   onCancel,
-  handleEdit,
+  handleToggle,
   handleDelete,
   handleExecute,
   initData,
   getFullProviderDisplayName,
   getSelectedConfigDisplayName,
 } = useFirewallRules()
+
+const editor = useFirewallRules({ onSaved: fetchRules })
+const {
+  form: editForm,
+  submitting: editSubmitting,
+  selectedCloudConfig: editSelectedCloudConfig,
+  isPortDisabled: editIsPortDisabled,
+  portCount: editPortCount,
+} = editor
+const editDialogVisible = ref(false)
+
+const handleEdit = (row: FirewallRule) => {
+  editor.rules.value = rules.value
+  editor.cloudConfigs.value = cloudConfigs.value
+  editor.cloudConfigOptions.value = cloudConfigOptions.value
+  editor.handleEdit(row)
+  editDialogVisible.value = true
+}
+
+const resetEdit = () => {
+  if (!editDialogVisible.value) editor.onCancel()
+}
+
+const saveEdit = async () => {
+  if (await editor.onSubmit()) editDialogVisible.value = false
+}
 
 const formatDate = (_row: any, _column: any, cellValue: string) => {
   return formatDateTime(cellValue)
@@ -133,3 +139,23 @@ onMounted(() => {
   initData()
 });
 </script>
+
+<style scoped>
+.execute-action {
+  display: inline-block;
+  margin-left: 12px;
+}
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-left: 120px;
+}
+.form-actions .el-button + .el-button {
+  margin-left: 0;
+}
+@media (max-width: 600px) {
+  .form-actions {
+    margin-left: 0;
+  }
+}
+</style>

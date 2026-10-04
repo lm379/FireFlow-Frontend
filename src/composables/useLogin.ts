@@ -1,5 +1,5 @@
-import { ref, reactive } from 'vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { ref, reactive, onUnmounted } from 'vue'
+import { ElMessage, type FormInstance, type FormRules, type MessageHandler } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { login, changePassword } from '../api/auth'
 import { useAuthStore } from '../stores/auth'
@@ -119,7 +119,7 @@ export function useLogin() {
       
       const response = await login(loginForm.username, loginForm.password)
       
-      if (response.success) {
+      if (response.code === 200) {
         const { token, user, is_first_login } = response.data
         
         ElMessage.success('登录成功')
@@ -140,7 +140,7 @@ export function useLogin() {
         }
       } else {
         // 显示服务器返回的具体错误信息
-        ElMessage.error(response.message || '登录失败')
+        ElMessage.error(response.msg || '登录失败')
       }
     } catch (error: any) {
       console.error('登录错误:', error)
@@ -152,13 +152,13 @@ export function useLogin() {
         const data = error.response.data
         
         if (status === 401) {
-          ElMessage.error(data.message || '用户名或密码错误')
+          ElMessage.error(data.msg || '用户名或密码错误')
         } else if (status === 400) {
-          ElMessage.error(data.message || '请求参数错误')
+          ElMessage.error(data.msg || '请求参数错误')
         } else if (status === 500) {
           ElMessage.error('服务器内部错误，请稍后重试')
         } else {
-          ElMessage.error(data.message || `登录失败 (${status})`)
+          ElMessage.error(data.msg || `登录失败 (${status})`)
         }
       } else if (error.request) {
         // 网络错误
@@ -185,7 +185,7 @@ export function useLogin() {
         changePasswordForm.newPassword
       )
       
-      if (response.success) {
+      if (response.code === 200) {
         ElMessage.success('密码修改成功，请重新登录')
         showChangePasswordDialog.value = false
         
@@ -204,7 +204,7 @@ export function useLogin() {
         // 立即重定向到登录页面
         router.push('/login')
       } else {
-        ElMessage.error(response.message || '密码修改失败')
+        ElMessage.error(response.msg || '密码修改失败')
       }
     } catch (error: any) {
       console.error('修改密码错误:', error)
@@ -215,13 +215,13 @@ export function useLogin() {
         const data = error.response.data
         
         if (status === 400) {
-          ElMessage.error(data.message || '原密码不正确或新密码格式错误')
+          ElMessage.error(data.msg || '原密码不正确或新密码格式错误')
         } else if (status === 401) {
           ElMessage.error('身份验证失败，请重新登录')
         } else if (status === 500) {
           ElMessage.error('服务器内部错误，请稍后重试')
         } else {
-          ElMessage.error(data.message || `修改密码失败 (${status})`)
+          ElMessage.error(data.msg || `修改密码失败 (${status})`)
         }
       } else if (error.request) {
         ElMessage.error('网络连接失败，请检查网络设置')
@@ -234,8 +234,12 @@ export function useLogin() {
   }
 
   // 处理忘记密码
+  let forgotPasswordMessage: MessageHandler | undefined
+  onUnmounted(() => forgotPasswordMessage?.close())
+
   const handleForgotPassword = () => {
-    ElMessage({
+    forgotPasswordMessage?.close()
+    forgotPasswordMessage = ElMessage({
       message: `
         <div style="line-height: 1.6;">
           <strong>忘记密码解决方法：</strong><br/>
@@ -254,7 +258,8 @@ export function useLogin() {
         </div>
       `,
       type: 'info',
-      duration: 10000,
+      duration: 5000,
+      showClose: true,
       dangerouslyUseHTMLString: true,
       customClass: 'forgot-password-message'
     })

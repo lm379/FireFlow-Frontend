@@ -60,7 +60,7 @@
         </div>
 
         <el-form
-          ref="loginFormRef"
+          :ref="loginState.loginFormRef"
           :model="loginForm"
           :rules="loginRules"
           class="login-form"
@@ -121,7 +121,7 @@
       :show-close="false"
     >
       <el-form
-        ref="changePasswordFormRef"
+        :ref="loginState.changePasswordFormRef"
         :model="changePasswordForm"
         :rules="changePasswordRules"
         label-width="100px"
@@ -160,7 +160,7 @@
           :loading="changePasswordLoading"
           @click="handleChangePassword"
         >
-          确认修改
+          确认
         </el-button>
       </template>
     </el-dialog>
@@ -171,10 +171,9 @@
 import { onMounted } from 'vue'
 import { useLogin } from '../composables/useLogin'
 
+const loginState = useLogin()
 const {
   // 响应式数据
-  loginFormRef,
-  changePasswordFormRef,
   loading,
   changePasswordLoading,
   showChangePasswordDialog,
@@ -189,7 +188,7 @@ const {
   handleChangePassword,
   initLoginForm,
   handleForgotPassword,
-} = useLogin()
+} = loginState
 
 // 组件挂载时恢复保存的登录信息
 onMounted(() => {

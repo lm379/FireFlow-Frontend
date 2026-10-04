@@ -3,109 +3,22 @@
     <el-card class="box-card">
       <template #header>
         <div class="card-header">
-          <span>{{ isEdit ? '编辑云服务配置' : '添加云服务配置' }}</span>
+          <span>添加云服务配置</span>
         </div>
       </template>
-      <el-form :model="form" label-width="140px">
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="云服务商 *">
-              <el-select v-model="form.provider" placeholder="请选择云服务商" @change="onProviderChange" style="width: 100%;">
-                <el-option v-for="item in providers" :key="item" :label="getProviderDisplayName(item)"
-                  :value="item"></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="区域 *">
-              <el-select v-model="form.region" placeholder="请选择区域" filterable :loading="loadingRegions"
-                style="width: 100%;">
-                <el-option v-for="item in regions" :key="item.code" :label="`${item.name} (${item.code})`"
-                  :value="item.code"></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="类型 *">
-              <el-select v-model="form.type" placeholder="请选择服务器类型" filterable :loading="loadingServiceTypes"
-                style="width: 100%;">
-                <el-option v-for="item in serviceTypes" :key="item.Value" :label="`${item.DisplayName} (${item.Name})`"
-                  :value="item.Value"></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="实例ID/安全组ID *">
-              <el-input v-model="form.instance_id" placeholder="云服务器实例ID/安全组ID"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="配置描述">
-              <el-input v-model="form.description" placeholder="配置用途描述"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="showProjectId">
-            <el-form-item label="Project ID *">
-              <el-input v-model="form.project_id" placeholder="华为云项目ID"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="showAzureFields">
-            <el-form-item label="Resource Group *">
-              <el-input v-model="form.project_id" placeholder="Azure资源组名称"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20" v-if="showAzureFields">
-          <el-col :span="12">
-            <el-form-item label="Tenant ID *">
-              <el-input v-model="form.tenant_id" placeholder="Azure租户ID"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="Subscription ID *">
-              <el-input v-model="form.subscription_id" placeholder="Azure订阅ID"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="AK *">
-              <el-input v-model="form.secret_id" placeholder="访问密钥ID/Client ID"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="SK *">
-              <el-input v-model="form.secret_key" type="password" placeholder="访问密钥Secret/Client Secret"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="设为默认配置">
-              <el-select v-model="form.is_default" style="width: 100%;">
-                <el-option label="否" :value="false"></el-option>
-                <el-option label="是" :value="true"></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="启用状态">
-              <el-select v-model="form.is_enabled" style="width: 100%;">
-                <el-option label="启用" :value="true"></el-option>
-                <el-option label="禁用" :value="false"></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item>
-          <el-button type="primary" @click="onSubmit">{{ isEdit ? '更新配置' : '保存配置' }}</el-button>
-          <el-button @click="onCancel">取消</el-button>
-        </el-form-item>
-      </el-form>
+      <CloudConfigFields v-model="form"
+        :providers="providers"
+        :regions="regions"
+        :service-types="serviceTypes"
+        :loading-regions="loadingRegions"
+        :loading-service-types="loadingServiceTypes"
+        :show-project-id="showProjectId"
+        :show-azure-fields="showAzureFields"
+        @provider-change="onProviderChange" />
+      <div class="form-actions">
+        <el-button type="primary" :loading="submitting" @click="onSubmit">保存配置</el-button>
+        <el-button :disabled="submitting" @click="onCancel">重置</el-button>
+      </div>
     </el-card>
 
     <el-card class="box-card" style="margin-top: 20px;">
@@ -160,43 +73,112 @@
         </el-table-column>
         <el-table-column prop="description" label="描述" />
         <el-table-column prop="CreatedAt" label="创建时间" width="180" :formatter="formatDate" />
-        <el-table-column label="操作" fixed="right" width="200">
+        <el-table-column label="操作" fixed="right" width="280">
           <template #default="scope">
-            <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
-            <el-button size="small" type="info" @click="handleTest(scope.row)">测试</el-button>
+            <el-button size="small" :type="scope.row.is_enabled ? 'warning' : 'success'"
+              :loading="togglingIds.has(scope.row.ID)" @click="handleToggle(scope.row)">
+              {{ scope.row.is_enabled ? '禁用' : '启用' }}
+            </el-button>
+            <el-button size="small" :disabled="togglingIds.has(scope.row.ID)" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button size="small" type="danger" :disabled="togglingIds.has(scope.row.ID)" @click="handleDelete(scope.row)">删除</el-button>
+            <el-button size="small" type="info" :disabled="togglingIds.has(scope.row.ID)" @click="handleTest(scope.row)">测试</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-dialog v-model="editDialogVisible" title="编辑服务器实例" width="min(900px, 94vw)"
+      :close-on-click-modal="false" :close-on-press-escape="!editSubmitting" :show-close="false"
+      destroy-on-close @closed="resetEdit">
+      <CloudConfigFields v-model="editForm"
+        :providers="providers"
+        :regions="editRegions"
+        :service-types="editServiceTypes"
+        :loading-regions="editLoadingRegions"
+        :loading-service-types="editLoadingServiceTypes"
+        :show-project-id="editShowProjectId"
+        :show-azure-fields="editShowAzureFields" is-edit
+        @provider-change="editor.onProviderChange" />
+      <template #footer>
+        <el-button :disabled="editSubmitting" @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editSubmitting" @click="saveEdit">确认</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
+import type { CloudConfig } from '../api'
+import CloudConfigFields from './CloudConfigFields.vue'
 import { useCloudConfig, getProviderDisplayName, getServiceTypeDisplayName, formatDate } from '../composables/useCloudConfig'
 
 const {
   configs,
+  fetchCloudConfigs,
   providers,
   regions,
   serviceTypes,
   loadingRegions,
   loadingServiceTypes,
   form,
-  isEdit,
+  submitting,
+  togglingIds,
   showProjectId,
   showAzureFields,
   onProviderChange,
   onSubmit,
   onCancel,
-  handleEdit,
+  handleToggle,
   handleDelete,
   handleTest,
   initData,
 } = useCloudConfig()
 
+const editor = useCloudConfig({ onSaved: fetchCloudConfigs })
+const {
+  form: editForm,
+  submitting: editSubmitting,
+  regions: editRegions,
+  serviceTypes: editServiceTypes,
+  loadingRegions: editLoadingRegions,
+  loadingServiceTypes: editLoadingServiceTypes,
+  showProjectId: editShowProjectId,
+  showAzureFields: editShowAzureFields,
+} = editor
+const editDialogVisible = ref(false)
+
+const handleEdit = (row: CloudConfig) => {
+  editor.configs.value = configs.value
+  editor.handleEdit(row)
+  editDialogVisible.value = true
+}
+
+const resetEdit = () => {
+  if (!editDialogVisible.value) editor.onCancel()
+}
+
+const saveEdit = async () => {
+  if (await editor.onSubmit()) editDialogVisible.value = false
+}
+
 onMounted(() => {
   initData()
 })
 </script>
+
+<style scoped>
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-left: 140px;
+}
+.form-actions .el-button + .el-button {
+  margin-left: 0;
+}
+@media (max-width: 600px) {
+  .form-actions {
+    margin-left: 0;
+  }
+}
+</style>

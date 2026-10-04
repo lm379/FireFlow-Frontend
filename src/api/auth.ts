@@ -1,28 +1,17 @@
 import { apiClient } from './index'
 
-export interface LoginResponse {
-  success: boolean
-  message: string
-  data: {
-    token: string
-    user: {
-      id: number
-      username: string
-      is_first_login: boolean
-      last_login_time?: string
-      created_at: string
-      updated_at: string
-    }
-    is_first_login: boolean
-    expires_at: number
-  }
+import type { ApiResponse } from './index'
+import type { User } from '../stores/auth'
+export type { ApiResponse } from './index'
+
+export interface LoginData {
+  token: string
+  user: User
+  is_first_login: boolean
+  expires_at: number
 }
 
-export interface ApiResponse<T = any> {
-  success: boolean
-  message: string
-  data?: T
-}
+export type LoginResponse = ApiResponse<LoginData>
 
 // 登录
 export const login = async (username: string, password: string): Promise<LoginResponse> => {
@@ -34,7 +23,7 @@ export const login = async (username: string, password: string): Promise<LoginRe
 }
 
 // 修改密码
-export const changePassword = async (oldPassword: string, newPassword: string): Promise<ApiResponse> => {
+export const changePassword = async (oldPassword: string, newPassword: string): Promise<ApiResponse<null>> => {
   const response = await apiClient.post('/auth/change-password', {
     old_password: oldPassword,
     new_password: newPassword
@@ -43,26 +32,26 @@ export const changePassword = async (oldPassword: string, newPassword: string): 
 }
 
 // 验证令牌
-export const verifyToken = async (token?: string): Promise<ApiResponse> => {
+export const verifyToken = async (token?: string): Promise<ApiResponse<{valid: boolean, user?: User}>> => {
   const url = token ? `/auth/verify?token=${encodeURIComponent(token)}` : '/auth/verify'
   const response = await apiClient.get(url)
   return response.data
 }
 
 // 获取当前用户信息
-export const getCurrentUser = async (): Promise<ApiResponse> => {
+export const getCurrentUser = async (): Promise<ApiResponse<User>> => {
   const response = await apiClient.get('/auth/me')
   return response.data
 }
 
 // 检查首次登录状态
-export const checkFirstLogin = async (): Promise<ApiResponse> => {
+export const checkFirstLogin = async (): Promise<ApiResponse<{is_first_login: boolean}>> => {
   const response = await apiClient.get('/auth/first-login')
   return response.data
 }
 
 // 退出登录
-export const logout = async (): Promise<ApiResponse> => {
+export const logout = async (): Promise<ApiResponse<null>> => {
   const response = await apiClient.post('/auth/logout')
   return response.data
 }

@@ -75,6 +75,7 @@
       v-model="showChangePasswordDialog"
       title="修改密码"
       width="400px"
+      :show-close="false"
     >
       <el-form
         ref="changePasswordFormRef"
@@ -119,7 +120,7 @@
           :loading="changePasswordLoading"
           @click="handleChangePassword"
         >
-          确认修改
+          确认
         </el-button>
       </template>
     </el-dialog>
@@ -222,7 +223,8 @@ const handleUserMenuCommand = async (command: string) => {
     case 'logout':
       try {
         await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-          confirmButtonText: '确定',
+          confirmButtonText: '确认',
+          showClose: false,
           cancelButtonText: '取消',
           type: 'warning'
         });
@@ -258,7 +260,7 @@ const handleChangePassword = async () => {
       changePasswordForm.newPassword
     );
     
-    if (response.success) {
+    if (response.code === 200) {
       ElMessage.success('密码修改成功，请重新登录');
       showChangePasswordDialog.value = false;
       
@@ -271,7 +273,7 @@ const handleChangePassword = async () => {
       authStore.clearAuth();
       router.push('/login');
     } else {
-      ElMessage.error(response.message || '密码修改失败');
+      ElMessage.error(response.msg || '密码修改失败');
     }
   } catch (error: any) {
     ElMessage.error(error.message || '密码修改失败');

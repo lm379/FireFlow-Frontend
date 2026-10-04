@@ -19,7 +19,7 @@ export function useSystemSettings() {
     try {
       loading.value = true
       const response = await getSystemConfig()
-      form.value = response.data
+      form.value = response.data.data
     } catch (error) {
       ElMessage.error('获取系统配置失败')
     } finally {
@@ -31,7 +31,7 @@ export function useSystemSettings() {
   const fetchCurrentIP = async () => {
     try {
       const response = await getCurrentIP()
-      currentIP.value = response.data.current_ip
+      currentIP.value = response.data.data.current_ip
     } catch (error) {
       currentIP.value = '获取失败'
       ElMessage.error('获取当前IP失败')
@@ -56,10 +56,10 @@ export function useSystemSettings() {
     try {
       loading.value = true
       const response = await syncIPNow()
-      ElMessage.success(response.data.message)
+      ElMessage.success(response.data.msg)
       await fetchCurrentIP()
-    } catch (error) {
-      ElMessage.error('同步IP失败')
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.msg || '同步IP失败')
     } finally {
       loading.value = false
     }
@@ -87,8 +87,8 @@ export function useSystemSettings() {
       return false
     }
 
-    if (form.value.ip_check_interval < 1) {
-      ElMessage.error('IP检查间隔必须大于0分钟')
+    if (!Number.isInteger(form.value.ip_check_interval) || form.value.ip_check_interval < 1) {
+      ElMessage.error('IP检查间隔必须为正整数分钟')
       return false
     }
 
