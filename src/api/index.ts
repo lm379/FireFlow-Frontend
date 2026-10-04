@@ -24,6 +24,21 @@ apiClient.interceptors.request.use(
 // 添加响应拦截器，处理认证错误
 const rejectAPIError = (error: AxiosError<ApiResponse<null>>) => {
   const body = error.response?.data
+  if (body?.reason === 'PASSWORD_CHANGE_REQUIRED') {
+    const savedUser = localStorage.getItem('user_info')
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser)
+        user.is_first_login = true
+        localStorage.setItem('user_info', JSON.stringify(user))
+      } catch {
+        localStorage.removeItem('user_info')
+      }
+    }
+    if (!window.location.hash.includes('/login')) {
+      window.location.href = window.location.origin + '/#/login'
+    }
+  }
   if (error.response?.status === 401 || body?.code === 401 || body?.code === 40101) {
     const requestUrl = error.config?.url || ''
     if (!requestUrl.includes('/auth/login')) {

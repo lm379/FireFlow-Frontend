@@ -42,6 +42,10 @@ export function useLogin() {
 
   // 初始化时恢复保存的登录信息
   const initLoginForm = () => {
+    authStore.restoreAuth()
+    if (authStore.user?.is_first_login) {
+      showChangePasswordDialog.value = true
+    }
     try {
       const savedUsername = localStorage.getItem('remembered_username')
       const savedPassword = localStorage.getItem('remembered_password')

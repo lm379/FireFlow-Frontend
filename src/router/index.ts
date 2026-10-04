@@ -60,6 +60,12 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('auth_token')
   const isAuthenticated = !!token
+  let requiresPasswordChange = false
+  try {
+    requiresPasswordChange = JSON.parse(localStorage.getItem('user_info') || 'null')?.is_first_login === true
+  } catch {
+    requiresPasswordChange = false
+  }
   
   // 设置页面标题
   if (to.meta?.title) {
@@ -73,7 +79,12 @@ router.beforeEach((to, _from, next) => {
   }
   
   // 如果用户已登录且访问登录页，跳转到首页
-  if (to.name === 'login' && isAuthenticated) {
+  if (isAuthenticated && requiresPasswordChange && to.name !== 'login') {
+    next('/login')
+    return
+  }
+
+  if (to.name === 'login' && isAuthenticated && !requiresPasswordChange) {
     next('/')
     return
   }
